@@ -17,7 +17,7 @@ struct myStruct {
     int velikostZbirke; //4
     int hashZbirke; //4
     char imeZbirke[MAXDATASIZE]; //dolzinaImeZbrike+1
-    char buffer[MAXDATASIZE]; //1040
+    char buffer[MAXDATASIZE]; //1040   //2064
 };
 
 int main(int argc, char *argv[]) {
@@ -25,6 +25,9 @@ int main(int argc, char *argv[]) {
 	struct stat file;
 	FILE * fp = fopen (argv[3], "r");
 	struct myStruct *fileInfo = malloc(sizeof(struct myStruct));
+	ssize_t nread;
+	int wtf = sizeof(&fileInfo);
+	printf("%d", wtf);
 
 	//Fill OUT STRUCT
 	//metapodatki && velikostZbirke
@@ -91,29 +94,27 @@ int main(int argc, char *argv[]) {
 	}
 
 	// as long there is soething to read...
-	while(numbytes != 0) {
-	
-		if(send(sockfd, &fileInfo, 1024, 0) < 0) {
-			perror("send");
+	int counterBytes=0;
+
+	while(counterBytes < 2064){
+		if(counterBytes >= 1040) {
+			write(&fp, fileInfo->buffer, nread);
+			while ((nread = read(sockfd, &fileInfo, 520)) > 0){
+				counterBytes += nread;
+			}
+		} else {
+			while ((nread = read(sockfd, &fileInfo, 520)) > 0){
+				write(&fp, fileInfo->buffer, nread);
+				counterBytes += nread;
+			}
 		}
-
-		close(newfd); // close socket
 	}
 
-
-		// receive numbytes from server...
-		// if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-		// 	perror("recv");
-		// 	exit(1);
-		// }
-		
-		buf[numbytes] = '\0'; // all strings in c ends with \0 (see strlen)
-		
-		// print received string to standard output
-		write(0, buf, numbytes);
+	if(send(sockfd, &fileInfo, 1024, 0) < 0) {
+		perror("send");
 	}
+		
 	
-	// close socket
 	close(sockfd);
 	
 	return 0;
