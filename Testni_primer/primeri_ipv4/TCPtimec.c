@@ -7,62 +7,18 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 
 #define MAXDATASIZE 1024 //število prebranih zlogov
 
-struct myStruct {
-    int metapodatki; //4
-    int dolzinaImeZbirke; //4
-    int velikostZbirke; //4
-    int hashZbirke; //4
-    char imeZbirke[MAXDATASIZE]; //dolzinaImeZbrike+1
-    char buffer[MAXDATASIZE]; //1040
-};
-
 int main(int argc, char *argv[]) {
-
-	struct stat file;
-	FILE * fp = fopen (argv[3], "r");
-	struct myStruct *fileInfo = malloc(sizeof(struct myStruct));
-
-	//Fill OUT STRUCT
-	//metapodatki && velikostZbirke
-	stat(argv[3], &file);
-	int is_file = S_ISREG(file.st_mode);
-	if (is_file == 1) {
-		fileInfo->metapodatki = 0x8000000;
-		fileInfo->velikostZbirke = file.st_size;
-
-	} else {
-		fileInfo->metapodatki = 0x40000000;
-		fileInfo->velikostZbirke = 0;
-	}
-
-	//dolzinaImeZbirke
-	fileInfo->dolzinaImeZbirke = strlen(argv[3])+1;
-
-	//hashZbrike
-
-	//imeZbirke
-	strcpy(fileInfo->imeZbirke, argv[3]+0);
-
-	//buffer
-	//strcpy(fileInfo->buffer, argv[3]);
-
-	printf("fileInfo->metapodatki: %d\n", fileInfo->metapodatki);
-	printf("fileInfo->dolzinaImeZbirke: %d\n", fileInfo->dolzinaImeZbirke);
-	printf("fileInfo->velikostZbirke: %d\n", fileInfo->velikostZbirke);
-	printf("fileInfo->imeZbirke: %s\n", fileInfo->imeZbirke);
-	printf("fileInfo->buffer: %s\n", fileInfo->buffer);
 
 	int sockfd, numbytes;  // socekt file descriptor, new file descriptor
 	char buf[MAXDATASIZE]; // array holding the string to be received via TCP
 	struct hostent *he;    // pointer to the structure hostent (returned by gethostbyname) 
 	struct sockaddr_in their_addr; // server address
 	
-	if (argc != 4) {
-		write(0,"Uporaba: TCPtimec <ime> <vrata> <file|directory> \n\0", 50);
+	if (argc != 3) {
+		write(0,"Uporaba: TCPtimec ime vrata\n\0", 29);
 		exit(1);
 	}
 	
@@ -93,19 +49,11 @@ int main(int argc, char *argv[]) {
 	// as long there is soething to read...
 	while(numbytes != 0) {
 	
-		if(send(sockfd, &fileInfo, 1024, 0) < 0) {
-			perror("send");
-		}
-
-		close(newfd); // close socket
-	}
-
-
 		// receive numbytes from server...
-		// if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-		// 	perror("recv");
-		// 	exit(1);
-		// }
+		if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+			perror("recv");
+			exit(1);
+		}
 		
 		buf[numbytes] = '\0'; // all strings in c ends with \0 (see strlen)
 		
