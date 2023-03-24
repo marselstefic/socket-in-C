@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #define MAXDATASIZE 1024 //število prebranih zlogov
 
@@ -16,18 +17,16 @@ struct myStruct {
     int dolzinaImeZbirke; //4
     int velikostZbirke; //4
     int hashZbirke; //4
-    char imeZbirke[MAXDATASIZE]; //dolzinaImeZbrike+1
-    char buffer[MAXDATASIZE]; //1040   //2064
 };
 
 int main(int argc, char *argv[]) {
 
+	char imeZbirke[1024]; //dolzinaImeZbrike+1
+    char buffer[1024]; //1040   
 	struct stat file;
-	FILE * fp = fopen (argv[3], "r");
+	FILE* fp = fopen (argv[3], "r");
+	int fd = open(argv[3], O_RDONLY);
 	struct myStruct *fileInfo = malloc(sizeof(struct myStruct));
-	ssize_t nread;
-	int wtf = sizeof(&fileInfo);
-	printf("%d", wtf);
 
 	//Fill OUT STRUCT
 	//metapodatki && velikostZbirke
@@ -45,19 +44,13 @@ int main(int argc, char *argv[]) {
 	//dolzinaImeZbirke
 	fileInfo->dolzinaImeZbirke = strlen(argv[3])+1;
 
-	//hashZbrike
-
 	//imeZbirke
-	strcpy(fileInfo->imeZbirke, argv[3]+0);
-
-	//buffer
-	//strcpy(fileInfo->buffer, argv[3]);
+	strcpy(imeZbirke, argv[3]);
 
 	printf("fileInfo->metapodatki: %d\n", fileInfo->metapodatki);
 	printf("fileInfo->dolzinaImeZbirke: %d\n", fileInfo->dolzinaImeZbirke);
 	printf("fileInfo->velikostZbirke: %d\n", fileInfo->velikostZbirke);
-	printf("fileInfo->imeZbirke: %s\n", fileInfo->imeZbirke);
-	printf("fileInfo->buffer: %s\n", fileInfo->buffer);
+	printf("fileInfo->imeZbirke: %s\n", imeZbirke);
 
 	int sockfd, numbytes;  // socekt file descriptor, new file descriptor
 	char buf[MAXDATASIZE]; // array holding the string to be received via TCP
@@ -93,28 +86,20 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
+	size_t hashCounter;
+	while((hashCounter = fread(buffer, 1, MAXDATASIZE, fp)) > 0) {  //Hash zbirke
+		fileInfo->hashZbirke += hashCounter;
+	}
+
+	send(sockfd, &fileInfo, sizeof(struct myStruct), 0);
+	send(sockfd, &imeZbirke, sizeof(imeZbirke), 0);
+
 	// as long there is soething to read...
-	int counterBytes=0;
-
-	while(counterBytes < 2064){
-		if(counterBytes >= 1040) {
-			write(&fp, fileInfo->buffer, nread);
-			while ((nread = read(sockfd, &fileInfo, 520)) > 0){
-				counterBytes += nread;
-			}
-		} else {
-			while ((nread = read(sockfd, &fileInfo, 520)) > 0){
-				write(&fp, fileInfo->buffer, nread);
-				counterBytes += nread;
-			}
-		}
+	size_t saveSize;
+	while((saveSize = fread(buffer, 1, MAXDATASIZE, fp)) > 0) {  //buffer zbirke
+		send(sockfd, buffer, saveSize, 0);
 	}
 
-	if(send(sockfd, &fileInfo, 1024, 0) < 0) {
-		perror("send");
-	}
-		
-	
 	close(sockfd);
 	
 	return 0;

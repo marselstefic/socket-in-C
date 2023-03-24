@@ -5,13 +5,28 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <string.h>
+
+#define MAXDATASIZE 1024
+
+struct myStruct {
+    int metapodatki; //4
+    int dolzinaImeZbirke; //4
+    int velikostZbirke; //4
+    int hashZbirke; //4
+};
+
 
 int main(int argc, char *argv[]) {
+	char imeZbirke[MAXDATASIZE];
+    char buffer[MAXDATASIZE];
+    struct myStruct *fileInfo = malloc(sizeof(struct myStruct));
 	int sockfd, newfd; // socekt file descriptor, new file descriptor
 	socklen_t length;  // socket length (length of clinet address)
 	struct sockaddr_in saddr, caddr; // server address, client address
 	time_t itime; // time format
 	char *tstr; // var holding the string to be send via TCP
+	char path[1024] = "/home/naptus/faks/NPO/Vaja2/target/";
 
 	if(argc != 2) {
 		write(0, "Uporaba: TCPtimes vrata (vrata 0-1024 so rezervirana za jedro)\n\0", 25);
@@ -40,27 +55,27 @@ int main(int argc, char *argv[]) {
 
 	length = sizeof(caddr); // length of client address
 
-	while(1) {
+	FILE* fp;
 
 		// accept new client (wait for him!)
-		//perror("start waiting...");
-		if((newfd = accept(sockfd, (struct sockaddr *)&caddr, &length)) < 0) {
+		if((newfd = accept(sockfd, (struct sockaddr *)&caddr, &length)) > 0) {
 			perror("accept");
-		}
-		//perror("done!");
-                
-		itime = time(NULL); // get the number of seconds elapsed since 00:00:00 on January 1, 1970
-		tstr = ctime(&itime); // convert them to the current date and time
-	
-	        // send time string (no htonX needed as we are sending characters!!)
-		if(send(newfd, tstr, 520, 0) < 0) {
-			perror("send");
-		}
+			recv(newfd, fileInfo, sizeof(struct myStruct), 0);
+			recv(newfd, &imeZbirke, MAXDATASIZE, 0);
+			printf("%s", imeZbirke);
+			strcat(path, imeZbirke);
+			fp = fopen(path, "a");
+
+		// if(recv(newfd, &buffer, MAXDATASIZE, 0) <= 0) {
+		// 	fprintf(fp, "%s", buffer);
+		// 	perror("send");
+		// }
 
 		close(newfd); // close socket
 	}
+		
 
-	//close(sockfd);
+
 	
 	return 0;
 }
