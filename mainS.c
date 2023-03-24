@@ -18,9 +18,8 @@ struct myStruct {
 
 
 int main(int argc, char *argv[]) {
-	char imeZbirke[MAXDATASIZE];
     char buffer[MAXDATASIZE];
-    struct myStruct *fileInfo = malloc(sizeof(struct myStruct));
+    struct myStruct fileInfo;
 	int sockfd, newfd; // socekt file descriptor, new file descriptor
 	socklen_t length;  // socket length (length of clinet address)
 	struct sockaddr_in saddr, caddr; // server address, client address
@@ -56,19 +55,29 @@ int main(int argc, char *argv[]) {
 	length = sizeof(caddr); // length of client address
 
 	FILE* fp;
-
+	size_t sizeRead;
 		// accept new client (wait for him!)
 		if((newfd = accept(sockfd, (struct sockaddr *)&caddr, &length)) > 0) {
 			perror("accept");
-			recv(newfd, fileInfo, sizeof(struct myStruct), 0);
-			recv(newfd, &imeZbirke, MAXDATASIZE, 0);
-			printf("%s", imeZbirke);
+			recv(newfd, &fileInfo, sizeof(fileInfo), 0);
+			char imeZbirke[fileInfo.dolzinaImeZbirke];
+			recv(newfd, &imeZbirke, sizeof(imeZbirke), 0);
+
+			printf("fileInfo->metapodatki: %x\n", fileInfo.metapodatki);
+			printf("fileInfo->dolzinaImeZbirke: %d\n", fileInfo.dolzinaImeZbirke);
+			printf("fileInfo->velikostZbirke: %d\n", fileInfo.velikostZbirke);
+			printf("fileInfo->hashZbirke: %d\n", fileInfo.hashZbirke);
+			printf("fileInfo->imeZbirke: %s\n", imeZbirke);
+
 			strcat(path, imeZbirke);
 			fp = fopen(path, "a");
+			printf("%d", fileInfo.velikostZbirke);
 
-		// if(recv(newfd, &buffer, MAXDATASIZE, 0) <= 0) {
-		// 	fprintf(fp, "%s", buffer);
+		// while(sizeRead += recv(newfd, &buffer, MAXDATASIZE, 0) > fileInfo.velikostZbirke) {
 		// 	perror("send");
+		// 	printf("%d", 4);
+		// 	printf("%s", buffer);
+		// 	fprintf(fp, "%s", buffer);
 		// }
 
 		close(newfd); // close socket

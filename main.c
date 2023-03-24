@@ -20,37 +20,40 @@ struct myStruct {
 };
 
 int main(int argc, char *argv[]) {
-
-	char imeZbirke[1024]; //dolzinaImeZbrike+1
-    char buffer[1024]; //1040   
+ 
 	struct stat file;
-	FILE* fp = fopen (argv[3], "r");
+	
 	int fd = open(argv[3], O_RDONLY);
-	struct myStruct *fileInfo = malloc(sizeof(struct myStruct));
+	struct myStruct fileInfo;
+
+	FILE* fp = fopen (argv[3], "r+");
+	if(fp == NULL) {
+		printf("Error in file opening\n");
+	}  
+   
 
 	//Fill OUT STRUCT
 	//metapodatki && velikostZbirke
 	stat(argv[3], &file);
 	int is_file = S_ISREG(file.st_mode);
 	if (is_file == 1) {
-		fileInfo->metapodatki = 0x8000000;
-		fileInfo->velikostZbirke = file.st_size;
+		fileInfo.metapodatki = 0x80000000;
+		fileInfo.velikostZbirke = file.st_size;
 
 	} else {
-		fileInfo->metapodatki = 0x40000000;
-		fileInfo->velikostZbirke = 0;
+		fileInfo.metapodatki = 0x40000000;
+		fileInfo.velikostZbirke = 0;
 	}
 
+	char buffer[fileInfo.velikostZbirke];
+
 	//dolzinaImeZbirke
-	fileInfo->dolzinaImeZbirke = strlen(argv[3])+1;
+	fileInfo.dolzinaImeZbirke = strlen(argv[3])+1;
 
-	//imeZbirke
-	strcpy(imeZbirke, argv[3]);
-
-	printf("fileInfo->metapodatki: %d\n", fileInfo->metapodatki);
-	printf("fileInfo->dolzinaImeZbirke: %d\n", fileInfo->dolzinaImeZbirke);
-	printf("fileInfo->velikostZbirke: %d\n", fileInfo->velikostZbirke);
-	printf("fileInfo->imeZbirke: %s\n", imeZbirke);
+	printf("fileInfo->metapodatki: %d\n", fileInfo.metapodatki);
+	printf("fileInfo->dolzinaImeZbirke: %d\n", fileInfo.dolzinaImeZbirke);
+	printf("fileInfo->velikostZbirke: %d\n", fileInfo.velikostZbirke);
+	
 
 	int sockfd, numbytes;  // socekt file descriptor, new file descriptor
 	char buf[MAXDATASIZE]; // array holding the string to be received via TCP
@@ -86,19 +89,28 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-	size_t hashCounter;
-	while((hashCounter = fread(buffer, 1, MAXDATASIZE, fp)) > 0) {  //Hash zbirke
-		fileInfo->hashZbirke += hashCounter;
-	}
+	char imeZbirke[fileInfo.dolzinaImeZbirke + 1]; //dolzinaImeZbrike+1
+	strcpy(imeZbirke, argv[3]); //imeZbirke
+	printf("fileInfo->imeZbirke: %s\n", imeZbirke);
 
-	send(sockfd, &fileInfo, sizeof(struct myStruct), 0);
+	int hashCounter = 1;
+	fileInfo.hashZbirke = 0;
+	while((hashCounter = fread(buffer, 1, 1, fp)) > 0) {  //Hash zbirke
+	printf("fileInfo->hash: %d\n", hashCounter);
+		fileInfo.hashZbirke = fileInfo.hashZbirke + hashCounter;
+	}
+	printf("fileInfo->hashFinal: %d\n", fileInfo.hashZbirke);
+
+	send(sockfd, &fileInfo, sizeof(fileInfo), 0);
 	send(sockfd, &imeZbirke, sizeof(imeZbirke), 0);
 
-	// as long there is soething to read...
+	// as long there is something to read...
 	size_t saveSize;
-	while((saveSize = fread(buffer, 1, MAXDATASIZE, fp)) > 0) {  //buffer zbirke
-		send(sockfd, buffer, saveSize, 0);
-	}
+	// while((saveSize = fread(buffer, 1, MAXDATASIZE, fp)) > 0) {  //buffer zbirke
+	// 	send(sockfd, buffer, saveSize, 0);
+	// 	printf("%d", 4);
+	// }
+	printf("Savesize: %d", saveSize);
 
 	close(sockfd);
 	
