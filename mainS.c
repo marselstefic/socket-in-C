@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <string.h>
+#include <pthread.h>
 
 #define MAXDATASIZE 1024
 
@@ -16,16 +17,47 @@ struct myStruct {
     int hashZbirke; //4
 };
 
+void* worker (void* socketNew) {
+	int newfd = *(int*)socketNew;
+	FILE* fp;
+	size_t sizeRead;
+	char buffer[MAXDATASIZE];
+    struct myStruct fileInfo;
+	char path[1024] = "Transferred_";
+
+	recv(newfd, &fileInfo, sizeof(fileInfo), 0);
+	char imeZbirke[fileInfo.dolzinaImeZbirke + 1];
+	recv(newfd, &imeZbirke, sizeof(imeZbirke), 0);
+
+	printf("fileInfo->metapodatki: %x\n", fileInfo.metapodatki);
+	printf("fileInfo->dolzinaImeZbirke: %d\n", fileInfo.dolzinaImeZbirke);
+	printf("fileInfo->velikostZbirke: %d\n", fileInfo.velikostZbirke);
+	printf("fileInfo->hashZbirke: %d\n", fileInfo.hashZbirke);
+	printf("fileInfo->imeZbirke: %s\n", imeZbirke);
+
+	strcat(path, imeZbirke);
+	fp = fopen(path, "a");
+	printf("%s", path);
+
+	while((sizeRead = recv(newfd, buffer, MAXDATASIZE, 0)) > 0) {
+		if(fwrite(buffer, 1, sizeRead, fp) != sizeRead) {
+			perror("send");
+			printf("%d", 4);
+		}
+		
+	}
+	close(newfd); // close socket
+	fclose(fp);
+}
+
 
 int main(int argc, char *argv[]) {
-    char buffer[MAXDATASIZE];
-    struct myStruct fileInfo;
 	int sockfd, newfd; // socekt file descriptor, new file descriptor
 	socklen_t length;  // socket length (length of clinet address)
 	struct sockaddr_in saddr, caddr; // server address, client address
 	time_t itime; // time format
 	char *tstr; // var holding the string to be send via TCP
-	char path[1024] = "/home/naptus/faks/NPO/Vaja2/target/";
+	
 
 	if(argc != 2) {
 		write(0, "Uporaba: TCPtimes vrata (vrata 0-1024 so rezervirana za jedro)\n\0", 25);
@@ -53,38 +85,16 @@ int main(int argc, char *argv[]) {
 	}
 
 	length = sizeof(caddr); // length of client address
-
-	FILE* fp;
-	size_t sizeRead;
-		// accept new client (wait for him!)
-		if((newfd = accept(sockfd, (struct sockaddr *)&caddr, &length)) > 0) {
+		
+	
+	while(1){
+		if((newfd = accept(sockfd, (struct sockaddr *)&caddr, &length)) < 0) {
 			perror("accept");
-			recv(newfd, &fileInfo, sizeof(fileInfo), 0);
-			char imeZbirke[fileInfo.dolzinaImeZbirke];
-			recv(newfd, &imeZbirke, sizeof(imeZbirke), 0);
-
-			printf("fileInfo->metapodatki: %x\n", fileInfo.metapodatki);
-			printf("fileInfo->dolzinaImeZbirke: %d\n", fileInfo.dolzinaImeZbirke);
-			printf("fileInfo->velikostZbirke: %d\n", fileInfo.velikostZbirke);
-			printf("fileInfo->hashZbirke: %d\n", fileInfo.hashZbirke);
-			printf("fileInfo->imeZbirke: %s\n", imeZbirke);
-
-			strcat(path, imeZbirke);
-			fp = fopen(path, "a");
-			printf("%d", fileInfo.velikostZbirke);
-
-		// while(sizeRead += recv(newfd, &buffer, MAXDATASIZE, 0) > fileInfo.velikostZbirke) {
-		// 	perror("send");
-		// 	printf("%d", 4);
-		// 	printf("%s", buffer);
-		// 	fprintf(fp, "%s", buffer);
-		// }
-
-		close(newfd); // close socket
+		}
+		pthread_t threadWorker;
+		pthread_create(&threadWorker, NULL, worker, (void*)&newfd);
+		pthread_detach(threadWorker);
 	}
 		
-
-
-	
 	return 0;
 }

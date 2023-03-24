@@ -22,17 +22,20 @@ struct myStruct {
 int main(int argc, char *argv[]) {
  
 	struct stat file;
-	
 	int fd = open(argv[3], O_RDONLY);
 	struct myStruct fileInfo;
+	char buffer[MAXDATASIZE];
+	int sockfd, numbytes;  // socekt file descriptor, new file descriptor
+	char buf[MAXDATASIZE]; // array holding the string to be received via TCP
+	struct hostent *he;    // pointer to the structure hostent (returned by gethostbyname) 
+	struct sockaddr_in their_addr; // server address
 
 	FILE* fp = fopen (argv[3], "r+");
+	FILE* fp_hash = fopen (argv[3], "rb");
 	if(fp == NULL) {
 		printf("Error in file opening\n");
 	}  
    
-
-	//Fill OUT STRUCT
 	//metapodatki && velikostZbirke
 	stat(argv[3], &file);
 	int is_file = S_ISREG(file.st_mode);
@@ -45,20 +48,8 @@ int main(int argc, char *argv[]) {
 		fileInfo.velikostZbirke = 0;
 	}
 
-	char buffer[fileInfo.velikostZbirke];
-
 	//dolzinaImeZbirke
 	fileInfo.dolzinaImeZbirke = strlen(argv[3])+1;
-
-	printf("fileInfo->metapodatki: %d\n", fileInfo.metapodatki);
-	printf("fileInfo->dolzinaImeZbirke: %d\n", fileInfo.dolzinaImeZbirke);
-	printf("fileInfo->velikostZbirke: %d\n", fileInfo.velikostZbirke);
-	
-
-	int sockfd, numbytes;  // socekt file descriptor, new file descriptor
-	char buf[MAXDATASIZE]; // array holding the string to be received via TCP
-	struct hostent *he;    // pointer to the structure hostent (returned by gethostbyname) 
-	struct sockaddr_in their_addr; // server address
 	
 	if (argc != 4) {
 		write(0,"Uporaba: TCPtimec <ime> <vrata> <file|directory> \n\0", 50);
@@ -91,28 +82,47 @@ int main(int argc, char *argv[]) {
 
 	char imeZbirke[fileInfo.dolzinaImeZbirke + 1]; //dolzinaImeZbrike+1
 	strcpy(imeZbirke, argv[3]); //imeZbirke
+
+	printf("fileInfo->metapodatki: %d\n", fileInfo.metapodatki);
+	printf("fileInfo->dolzinaImeZbirke: %d\n", fileInfo.dolzinaImeZbirke);
+	printf("fileInfo->velikostZbirke: %d\n", fileInfo.velikostZbirke);
 	printf("fileInfo->imeZbirke: %s\n", imeZbirke);
 
 	int hashCounter = 1;
-	fileInfo.hashZbirke = 0;
-	while((hashCounter = fread(buffer, 1, 1, fp)) > 0) {  //Hash zbirke
-	printf("fileInfo->hash: %d\n", hashCounter);
-		fileInfo.hashZbirke = fileInfo.hashZbirke + hashCounter;
+	while((hashCounter = fread(buffer, 1, MAXDATASIZE, fp_hash)) > 0) {  //Hash zbirke
 	}
-	printf("fileInfo->hashFinal: %d\n", fileInfo.hashZbirke);
+
+	int hash=0;
+	for(int i = 0; i < fileInfo.velikostZbirke; i++){
+		hash += buffer[i];
+	}
+	fileInfo.hashZbirke = hash;
+	printf("fileInfo->hashZbirke: %d\n", fileInfo.hashZbirke);
 
 	send(sockfd, &fileInfo, sizeof(fileInfo), 0);
 	send(sockfd, &imeZbirke, sizeof(imeZbirke), 0);
 
 	// as long there is something to read...
-	size_t saveSize;
-	// while((saveSize = fread(buffer, 1, MAXDATASIZE, fp)) > 0) {  //buffer zbirke
-	// 	send(sockfd, buffer, saveSize, 0);
-	// 	printf("%d", 4);
-	// }
-	printf("Savesize: %d", saveSize);
+	size_t saveSize = 0;
+	while((saveSize = fread(buffer, 1, MAXDATASIZE, fp)) > 0) {  //buffer zbirke
+	if((send(sockfd, buffer, saveSize, 0)) < 0) {
+		printf("SPODLETEL\t");
+		if(is_file == 1) {
+			printf("ZBIRKA\t%s", imeZbirke);
+		} else {
+			printf("IMENIK\t%s", imeZbirke);
+		}
+	}
+	}
 
 	close(sockfd);
+
+	printf("USPEL\t");
+	if(is_file == 1) {
+		printf("ZBIRKA\t%s", imeZbirke);
+	} else {
+		printf("IMENIK\t%s", imeZbirke);
+	}
 	
 	return 0;
 } 
