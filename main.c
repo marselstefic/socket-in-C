@@ -35,12 +35,14 @@ void directorySearch(char* basePath, struct myStruct fileInfo);
 
 
 void directorySearch(char* basePath, struct myStruct fileInfo) {
-	char path[100] = "./";
+	char path[90] = "./";
 	struct dirent *dp;
     DIR *dir = opendir(basePath);
 	bool writeInSameFolder = false;
 
     // Unable to open directory stream
+	//Removed something
+	//fixes
     if (!dir)
         return;
 
