@@ -55,8 +55,9 @@ void directorySearch(char* basePath, struct myStruct fileInfo) {
             strcat(path, dp->d_name);
 			printf("Obdelujemo...: %s\n", path);
 
-			stat(path, &file);
-			int is_file = S_ISREG(file.st_mode);
+			if (stat(file, &file) == 0 && sb.st_mode & S_IXUSR){
+			} else {
+				int is_file = S_ISREG(file.st_mode);
 			if (is_file == 1) {
 				fileInput(path);	
 			} else {
@@ -65,6 +66,7 @@ void directorySearch(char* basePath, struct myStruct fileInfo) {
 					writeInSameFolder = true;
 					counterDirectory++;
 				}
+			}
 			}
         }
     }
